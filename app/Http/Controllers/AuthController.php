@@ -22,7 +22,7 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'error' => 'Kredensial yang diberikan salah.',
+                'error' => 'Password atau Email salah.',
             ], 401);
         }
 
@@ -89,8 +89,26 @@ class AuthController extends Controller
             'email' => 'required|email',
         ]);
 
-        // In a real app, send a password reset link here.
-        // For now, we just simulate the success response.
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Email tidak terdaftar, silakan periksa kembali.',
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Email ditemukan.',
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
+        ]);
+
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
@@ -99,8 +117,48 @@ class AuthController extends Controller
             ], 404);
         }
 
+        $user->password = Hash::make($request->password);
+        $user->save();
+
         return response()->json([
-            'message' => 'Tautan reset password telah dikirim ke email Anda.',
+            'message' => 'Password berhasil diubah, silakan login dengan password baru.',
+        ]);
+    }
+
+    public function googleLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'name' => 'required|string',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            // Register new user from Google
+            $username = explode('@', $request->email)[0] . rand(1000, 9999);
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $username,
+                'email' => $request->email,
+                'password' => Hash::make(uniqid()), // Random password, they login via google
+                'role' => 'user',
+            ]);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+            'message' => 'Login berhasil',
         ]);
     }
 }
