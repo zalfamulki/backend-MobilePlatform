@@ -124,41 +124,4 @@ class AuthController extends Controller
             'message' => 'Password berhasil diubah, silakan login dengan password baru.',
         ]);
     }
-
-    public function googleLogin(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'name' => 'required|string',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            // Register new user from Google
-            $username = explode('@', $request->email)[0] . rand(1000, 9999);
-            $user = User::create([
-                'name' => $request->name,
-                'username' => $username,
-                'email' => $request->email,
-                'password' => Hash::make(uniqid()), // Random password, they login via google
-                'role' => 'user',
-            ]);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'role' => $user->role,
-            ],
-            'message' => 'Login berhasil',
-        ]);
-    }
 }
